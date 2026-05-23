@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/*.sqlite
+**/*.sqlite-shm
+**/*.sqlite-wal
+**/scripts/dev-temp
+.env
+.git
+.vscode

@@ -1,0 +1,13 @@
+node_modules/
+
+# SQLite database files
+packages/db/data/*.sqlite
+packages/db/data/*.sqlite-wal
+packages/db/data/*.sqlite-shm
+
+# Environment variables (contain secrets / local paths)
+.env
+.env.local
+
+# Build output
+dist/

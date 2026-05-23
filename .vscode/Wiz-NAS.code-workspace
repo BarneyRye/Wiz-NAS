@@ -1,0 +1,29 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../backend"
+		},
+		{
+			"path": "../frontend"
+		},
+		{
+			"path": "../packages"
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"**/node_modules": true,
+			"frontend/": true,
+			"backend/": true,
+			"packages/": true
+		},
+		"search.exclude": {
+			"**/node_modules": true,
+			"**/dist": true,
+			"**/bun.lock": true
+		}
+	}
+}

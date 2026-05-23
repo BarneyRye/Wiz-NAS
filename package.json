@@ -1,0 +1,22 @@
+{
+  "name": "wiz-nas",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:backend": "cd backend && bun run dev",
+    "dev:frontend": "cd frontend && bun run dev",
+    "dev": "concurrently \"bun run dev:backend\" \"bun run dev:frontend\"",
+    "build:backend": "cd backend && bun run build",
+    "build:frontend": "cd frontend && bun run build",
+    "build": "concurrently \"bun run build:backend\" \"bun run build:frontend\""
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "@types/bun": "latest"
+  },
+  "module": "index.ts",
+  "type": "module"
+}
