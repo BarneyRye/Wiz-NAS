@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["ESNext"],
+    "allowJs": true,
+    "types": ["bun"],
+
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+
+    "strict": true,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "paths": {
+      "@packages/*": ["../packages/*"],
+      "@db/*": ["../packages/db/*"],
+      "@ui/*": ["../packages/ui/*"],
+      "@backend/*": ["../backend/*"],
+      "@frontend/*": ["../frontend/*"]
+    }
+  },
+  "include": ["src"]
+}

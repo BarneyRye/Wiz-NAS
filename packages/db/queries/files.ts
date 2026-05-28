@@ -29,3 +29,7 @@ export const deleteFile = db.query<void, [number]>(
 export const deleteFilesByDrive = db.query<void, [number]>(
   "DELETE FROM files WHERE drive_id = ?"
 );
+
+export const renameFile = db.query<void, [string, string, string]>(
+  `UPDATE files SET name = ?, path = ?, modified_at = datetime('now') WHERE path = ?`
+);

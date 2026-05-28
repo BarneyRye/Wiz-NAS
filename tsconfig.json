@@ -30,10 +30,9 @@
     "paths": {
       "@packages/*": ["./packages/*"],
       "@db/*": ["./packages/db/*"],
-      "@ui/*": ["./packages/ui/*"],
-      "@backend": ["./backend/*"],
-      "@frontend": ["./frontend/*"],
+      "@ui/*": ["./packages/ui/src/*"],
+      "@backend/*": ["./backend/*"],
+      "@frontend/*": ["./frontend/*"]
     }
-
   }
 }
