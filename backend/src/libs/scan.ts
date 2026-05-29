@@ -1,5 +1,5 @@
 import { readdir, stat, statfs } from "node:fs/promises"
-import { join } from "node:path"
+import { join, relative, sep } from "node:path"
 import { getMimeType } from "@packages/types"
 import type { Drive, File } from "@packages/types"
 import { db } from "@db/db.ts"
@@ -24,6 +24,7 @@ export async function scanDriveFiles(id: number, drives: Drive[]): Promise<File[
     if (!drive) throw new Error(`Drive ${id} not found`);
 
     const driveId = drive.id;
+    const drivePath = drive.path;
     const existing = getFilesByDrive.all(driveId);
     const known = new Set(existing.map(f => f.path));
     const seen = new Set<string>();
@@ -36,10 +37,11 @@ export async function scanDriveFiles(id: number, drives: Drive[]): Promise<File[
             if (entry.isDirectory()) {
                 await walk(fullPath);
             } else if (entry.isFile()) {
-                seen.add(fullPath);
-                if (!known.has(fullPath)) {
+                const relPath = relative(drivePath, fullPath).split(sep).join('/');
+                seen.add(relPath);
+                if (!known.has(relPath)) {
                     const { size } = await stat(fullPath);
-                    toInsert.push({ name: entry.name, path: fullPath, size });
+                    toInsert.push({ name: entry.name, path: relPath, size });
                 }
             }
         }
