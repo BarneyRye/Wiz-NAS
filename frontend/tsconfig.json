@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",
+    "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
@@ -12,7 +13,14 @@
     "jsx": "react-jsx",
     "strict": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@wiz-nas/ui": ["../packages/ui/src/index.ts"],
+      "@wiz-nas/ui/*": ["../packages/ui/src/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }

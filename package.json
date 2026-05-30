@@ -7,7 +7,7 @@
   "workspaces": [
     "backend",
     "frontend",
-    "packages/ui/*"
+    "packages/ui"
   ],
   "scripts": {
     "dev": "concurrently \"bun run dev:backend\" \"bun run dev:frontend\"",

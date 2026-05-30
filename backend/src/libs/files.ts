@@ -1,6 +1,7 @@
-import { writeFile, mkdir, rename, copyFile, unlink, rm, cp } from 'node:fs/promises'
+import { writeFile, mkdir, rename, copyFile, unlink, rm, cp, readdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { dirname, resolve, sep } from 'node:path'
+import { dirname, resolve, sep, join } from 'node:path'
+import { zipSync } from 'fflate'
 import type { Item, File } from '@packages/types'
 import { getFilesByPath, getFileById, getDriveById, upsertFile, deleteFile, deleteFileByPath, deleteFilesUnderPath, trashFolder, moveFolder, renameFile, moveFile} from '@db/queries'
 import { FileExistsError, NotFoundError, ValidationError } from './errors'
@@ -210,4 +211,34 @@ export async function makeFolderFn(drive_id: number, path: string): Promise<void
     await mkdir(folderDisk, { recursive: true });
     await writeFile(resolveDiskPath(drive_id, keepPath), '');
     upsertFile.get(drive_id, FOLDER_KEEP, keepPath, 0, null);
+}
+
+async function collectZipFiles(dir: string, base: string): Promise<Array<{ rel: string; disk: string }>> {
+    const results: Array<{ rel: string; disk: string }> = [];
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+        const relPath = base ? `${base}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) {
+            if (entry.name === TRASH_DIR) continue;
+            results.push(...await collectZipFiles(join(dir, entry.name), relPath));
+        } else if (entry.isFile() && entry.name !== FOLDER_KEEP) {
+            results.push({ rel: relPath, disk: join(dir, entry.name) });
+        }
+    }
+    return results;
+}
+
+export async function downloadFolderFn(drive_id: number, path: string): Promise<{ name: string; data: Uint8Array }> {
+    const folder = path.replace(/\/+$/g, '');
+    if (!folder) throw new ValidationError('Folder path required');
+    const rootDisk = resolveDiskPath(drive_id, folder);
+    if (!existsSync(rootDisk)) throw new NotFoundError(`Folder ${folder} doesn't exist`);
+    const folderName = folder.slice(folder.lastIndexOf('/') + 1);
+    const fileList = await collectZipFiles(rootDisk, '');
+    const fileMap: Record<string, Uint8Array> = {};
+    for (const { rel, disk } of fileList) {
+        fileMap[rel] = await Bun.file(disk).bytes();
+    }
+    const data = zipSync(fileMap);
+    return { name: `${folderName}.zip`, data };
 }

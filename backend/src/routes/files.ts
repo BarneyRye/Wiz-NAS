@@ -3,7 +3,7 @@ import type { File as FileRecord } from '@packages/types'
 import { getMimeType } from '@packages/types'
 import { requireAuth, requireRole, json, handle, parseBody, parseQuery, parseParams } from '@backend/src/libs/http'
 import { documentRoute } from '@backend/src/libs/openapi'
-import { getFileByIdFn, resolveFilePathFn, insertFileFn, getPathItems, deleteFileFn, deleteFolderFn, renameFileFn, moveFileFn, renameFolderFn, moveFolderFn, makeFolderFn } from '@backend/src/libs/files'
+import { getFileByIdFn, resolveFilePathFn, insertFileFn, getPathItems, deleteFileFn, deleteFolderFn, renameFileFn, moveFileFn, renameFolderFn, moveFolderFn, makeFolderFn, downloadFolderFn } from '@backend/src/libs/files'
 import { ValidationError } from '../libs/errors';
 
 const fileResponse = z.object({
@@ -31,6 +31,7 @@ const listQuery = z.object({ drive_id: z.coerce.number().int().positive(), path:
 const renameFileBody = z.object({ name: z.string().min(1), overwrite: z.boolean().optional() });
 const moveFileBody = z.object({ drive_id: z.number().int().positive(), dir: z.string(), overwrite: z.boolean().optional() });
 const folderBody = z.object({ drive_id: z.number().int().positive(), path: z.string().min(1) });
+const downloadFolderQuery = z.object({ drive_id: z.coerce.number().int().positive(), path: z.string().min(1) });
 const renameFolderBody = z.object({ drive_id: z.number().int().positive(), path: z.string().min(1), name: z.string().min(1), overwrite: z.boolean().optional() });
 const moveFolderBody = z.object({ drive_id: z.number().int().positive(), path: z.string().min(1), destDriveId: z.number().int().positive(), destDir: z.string(), overwrite: z.boolean().optional() });
 
@@ -129,6 +130,21 @@ function moveFile(req: Bun.BunRequest<'/api/file/:id/move'>): Promise<Response> 
     });
 }
 
+function downloadFolder(req: Request): Promise<Response> {
+    return handle(async () => {
+        requireAuth(req);
+        const { drive_id, path } = parseQuery(req, downloadFolderQuery);
+        const { name, data } = await downloadFolderFn(drive_id, path);
+        return new Response(data, {
+            headers: {
+                'Content-Type': 'application/zip',
+                'Content-Disposition': `attachment; filename="${encodeURIComponent(name)}"`,
+                'Content-Length': data.byteLength.toString(),
+            },
+        });
+    });
+}
+
 function makeFolder(req: Request): Promise<Response> {
     return handle(async () => {
         requireWrite(req);
@@ -172,6 +188,7 @@ documentRoute({ method: 'post', path: '/api/file', summary: 'Upload a file (mult
 documentRoute({ method: 'delete', path: '/api/file/{id}', summary: 'Move a file to trash', secured: true, params: fileParams, response: successResponse });
 documentRoute({ method: 'patch', path: '/api/file/{id}/rename', summary: 'Rename a file', secured: true, params: fileParams, body: renameFileBody, response: successResponse });
 documentRoute({ method: 'patch', path: '/api/file/{id}/move', summary: 'Move a file', secured: true, params: fileParams, body: moveFileBody, response: successResponse });
+documentRoute({ method: 'get', path: '/api/folder/download', summary: 'Download a folder as a zip (excludes trash and .keep)', secured: true, query: downloadFolderQuery });
 documentRoute({ method: 'post', path: '/api/folder', summary: 'Create a folder', secured: true, body: folderBody, response: successResponse, status: 201 });
 documentRoute({ method: 'delete', path: '/api/folder', summary: 'Move a folder to trash', secured: true, body: folderBody, response: successResponse });
 documentRoute({ method: 'patch', path: '/api/folder/rename', summary: 'Rename a folder', secured: true, body: renameFolderBody, response: successResponse });
@@ -184,6 +201,7 @@ export const fileRoutes = {
     '/api/file/:id/download': { GET: downloadFile },
     '/api/file/:id/rename': { PATCH: renameFile },
     '/api/file/:id/move': { PATCH: moveFile },
+    '/api/folder/download': { GET: downloadFolder },
     '/api/folder': { POST: makeFolder, DELETE: deleteFolder },
     '/api/folder/rename': { PATCH: renameFolder },
     '/api/folder/move': { PATCH: moveFolder },
