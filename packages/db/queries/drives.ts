@@ -20,5 +20,5 @@ export const deleteDrive = db.query<void, [number]>(
 );
 
 export const renameDrive = db.query<Drive, [string, number]>(
-    "UPDATE drives SET name ? WHERE id = ?"
+    "UPDATE drives SET name = ? WHERE id = ? RETURNING *"
 )

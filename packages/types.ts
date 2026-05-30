@@ -39,8 +39,11 @@ export type RevokedToken = {
     expires_at: number;
 };
 
-export type DirectoryItem = Omit<File, "id" | "drive_id" | "created_at"> & {
-    isDirectory: boolean;
+export type TokenPayload = {
+    sub: number;
+    username: string;
+    role: Role;
+    jti: string;
 };
 
 export const MIME_TYPES: Record<string, string> = {

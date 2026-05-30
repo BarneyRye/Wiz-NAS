@@ -1,6 +1,8 @@
 import { db } from "@db/db.ts";
 import type { User, Role } from "@packages/types.ts";
 
+export const getUsers = db.query<User, []>("SELECT * FROM users");
+
 export const getUserByUsername = db.query<User, [string]>(
     "SELECT * FROM users WHERE username = ?"
 );
