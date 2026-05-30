@@ -7,24 +7,24 @@
   "workspaces": [
     "backend",
     "frontend",
-    "packages/ui/*"
+    "packages/ui"
   ],
   "scripts": {
     "dev": "concurrently \"bun run dev:backend\" \"bun run dev:frontend\"",
-    "dev:backend": "bun --cwd backend run dev",
-    "dev:frontend": "bun --cwd frontend run dev",
+    "dev:backend": "bun --cwd=backend run dev",
+    "dev:frontend": "bun --cwd=frontend run dev",
     "build": "concurrently \"bun run build:backend\" \"bun run build:frontend\"",
-    "build:backend": "bun --cwd backend run build",
-    "build:frontend": "bun --cwd frontend run build",
+    "build:backend": "bun --cwd=backend run build",
+    "build:frontend": "bun --cwd=frontend run build",
     "typecheck": "concurrently \"bun run typecheck:backend\" \"bun run typecheck:frontend\"",
-    "typecheck:backend": "bun --cwd backend run typecheck",
-    "typecheck:frontend": "bun --cwd frontend run typecheck",
+    "typecheck:backend": "bun --cwd=backend run typecheck",
+    "typecheck:frontend": "bun --cwd=frontend run typecheck",
     "lint": "concurrently \"bun run lint:backend\" \"bun run lint:frontend\"",
-    "lint:backend": "bun --cwd backend run lint",
-    "lint:frontend": "bun --cwd frontend run lint",
+    "lint:backend": "bun --cwd=backend run lint",
+    "lint:frontend": "bun --cwd=frontend run lint",
     "format": "concurrently \"bun run format:backend\" \"bun run format:frontend\"",
-    "format:backend": "bun --cwd backend run format",
-    "format:frontend": "bun --cwd frontend run format"
+    "format:backend": "bun --cwd=backend run format",
+    "format:frontend": "bun --cwd=frontend run format"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

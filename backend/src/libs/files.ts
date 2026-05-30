@@ -1,22 +1,33 @@
-import { writeFile, mkdir, rename, copyFile, unlink, rm, cp } from 'node:fs/promises'
+import { writeFile, mkdir, rename, copyFile, unlink, rm, cp, readdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, resolve, sep, join } from 'node:path'
+import { zipSync } from 'fflate'
 import type { Item, File } from '@packages/types'
 import { getFilesByPath, getFileById, getDriveById, upsertFile, deleteFile, deleteFileByPath, deleteFilesUnderPath, trashFolder, moveFolder, renameFile, moveFile} from '@db/queries'
-import { FileExistsError } from './errors'
+import { FileExistsError, NotFoundError, ValidationError } from './errors'
+import { refreshDriveBytesFn } from './scan'
 
 const TRASH_DIR = '.trash';
 const FOLDER_KEEP = '.keep';
 
 function resolveDiskPath(drive_id: number, path: string): string {
     const drive = getDriveById.get(drive_id);
-    if (!drive) throw new Error(`Drive ${drive_id} not found`);
-    return join(drive.path, path);
+    if (!drive) throw new NotFoundError(`Drive ${drive_id} not found`);
+    const root = resolve(drive.path);
+    const full = resolve(root, path);
+    if (full !== root && !full.startsWith(root + sep)) throw new ValidationError(`Invalid path: ${path}`);
+    return full;
 }
 
 export function getFileByIdFn(id: number): File | null {
     const file = getFileById.get(id);
     return file;
+}
+
+export function resolveFilePathFn(id: number): { file: File; diskPath: string } {
+    const file = getFileById.get(id);
+    if (!file) throw new NotFoundError(`File with id: ${id} doesn't exist`);
+    return { file, diskPath: resolveDiskPath(file.drive_id, file.path) };
 }
 
 export async function insertFileFn(file: File, buffer: Buffer, overwrite: boolean = false): Promise<void> {
@@ -34,11 +45,13 @@ export async function insertFileFn(file: File, buffer: Buffer, overwrite: boolea
             await Bun.file(keepDisk).delete();
         }
     }
+    await refreshDriveBytesFn(file.drive_id);
 }
 
 export function getPathItems(drive_id: number, path: string): Item[] {
-    if (!drive_id || !path) throw new Error('Drive ID and path needed to retireve items by path');
-    const prefix = path.endsWith('/') ? path : `${path}/`;
+    if (!drive_id) throw new Error('Drive ID needed to retrieve items by path');
+    const folder = path.replace(/^\/+|\/+$/g, '');
+    const prefix = folder ? `${folder}/` : '';
     const files = getFilesByPath.all(drive_id, prefix);
     const items: Item[] = [];
     const seen = new Set<string>();
@@ -62,6 +75,7 @@ export async function deleteFileFn(id: number): Promise<void> {
     if (file.path.startsWith(`${TRASH_DIR}/`)) {
         deleteFile.run(id);
         await Bun.file(resolveDiskPath(file.drive_id, file.path)).delete();
+        await refreshDriveBytesFn(file.drive_id);
         return;
     }
     const trashPath = `${TRASH_DIR}/${file.name}`;
@@ -86,7 +100,7 @@ export async function deleteFolderFn(drive_id: number, path: string): Promise<vo
         await rm(srcDir, { recursive: true, force: true });
         return;
     }
-    if (!existsSync(srcDir)) throw new Error(`Folder ${folder} doesn't exist`);
+    if (!existsSync(srcDir)) throw new NotFoundError(`Folder ${folder} doesn't exist`);
     const slash = folder.lastIndexOf('/');
     const folderName = slash === -1 ? folder : folder.slice(slash + 1);
     const substrStart = slash + 2;
@@ -101,7 +115,7 @@ export async function deleteFolderFn(drive_id: number, path: string): Promise<vo
 
 export async function renameFileFn(id: number, name: string, overwrite: boolean = false): Promise<void> {
     const file = getFileById.get(id);
-    if (!file) throw new Error(`File with id: ${id} doesn't exist`);
+    if (!file) throw new NotFoundError(`File with id: ${id} doesn't exist`);
     const slash = file.path.lastIndexOf('/');
     const dir = slash === -1 ? '' : file.path.slice(0, slash);
     const filename = file.path.slice(slash + 1);
@@ -120,7 +134,7 @@ export async function renameFileFn(id: number, name: string, overwrite: boolean 
 
 export async function moveFileFn(id: number, drive_id: number, dir: string, overwrite: boolean = false): Promise<void> {
     const file = getFileById.get(id);
-    if (!file) throw new Error(`File with id: ${id} doesn't exist`);
+    if (!file) throw new NotFoundError(`File with id: ${id} doesn't exist`);
     const newPath = dir ? `${dir}/${file.name}` : file.name;
     if (drive_id === file.drive_id && newPath === file.path) return;
     const srcDiskPath = resolveDiskPath(file.drive_id, file.path);
@@ -149,9 +163,9 @@ export async function moveFolderFn(drive_id: number, path: string, destDriveId: 
     const dest = destDir.endsWith('/') ? destDir.slice(0, -1) : destDir;
     const newFolder = dest ? `${dest}/${folderName}` : folderName;
     if (destDriveId === drive_id && newFolder === folder) return;
-    if (destDriveId === drive_id && newFolder.startsWith(`${folder}/`)) throw new Error('Cannot move a folder into itself');
+    if (destDriveId === drive_id && newFolder.startsWith(`${folder}/`)) throw new ValidationError('Cannot move a folder into itself');
     const srcDir = resolveDiskPath(drive_id, folder);
-    if (!existsSync(srcDir)) throw new Error(`Folder ${folder} doesn't exist`);
+    if (!existsSync(srcDir)) throw new NotFoundError(`Folder ${folder} doesn't exist`);
     const destPath = resolveDiskPath(destDriveId, newFolder);
     if (existsSync(destPath)) {
         if (!overwrite) throw new FileExistsError(newFolder);
@@ -177,7 +191,7 @@ export async function renameFolderFn(drive_id: number, path: string, name: strin
     const newFolder = parent ? `${parent}/${name}` : name;
     if (newFolder === folder) return;
     const srcDir = resolveDiskPath(drive_id, folder);
-    if (!existsSync(srcDir)) throw new Error(`Folder ${folder} doesn't exist`);
+    if (!existsSync(srcDir)) throw new NotFoundError(`Folder ${folder} doesn't exist`);
     const destDir = resolveDiskPath(drive_id, newFolder);
     if (existsSync(destDir)) {
         if (!overwrite) throw new FileExistsError(newFolder);
@@ -197,4 +211,34 @@ export async function makeFolderFn(drive_id: number, path: string): Promise<void
     await mkdir(folderDisk, { recursive: true });
     await writeFile(resolveDiskPath(drive_id, keepPath), '');
     upsertFile.get(drive_id, FOLDER_KEEP, keepPath, 0, null);
+}
+
+async function collectZipFiles(dir: string, base: string): Promise<Array<{ rel: string; disk: string }>> {
+    const results: Array<{ rel: string; disk: string }> = [];
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+        const relPath = base ? `${base}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) {
+            if (entry.name === TRASH_DIR) continue;
+            results.push(...await collectZipFiles(join(dir, entry.name), relPath));
+        } else if (entry.isFile() && entry.name !== FOLDER_KEEP) {
+            results.push({ rel: relPath, disk: join(dir, entry.name) });
+        }
+    }
+    return results;
+}
+
+export async function downloadFolderFn(drive_id: number, path: string): Promise<{ name: string; data: Uint8Array }> {
+    const folder = path.replace(/\/+$/g, '');
+    if (!folder) throw new ValidationError('Folder path required');
+    const rootDisk = resolveDiskPath(drive_id, folder);
+    if (!existsSync(rootDisk)) throw new NotFoundError(`Folder ${folder} doesn't exist`);
+    const folderName = folder.slice(folder.lastIndexOf('/') + 1);
+    const fileList = await collectZipFiles(rootDisk, '');
+    const fileMap: Record<string, Uint8Array> = {};
+    for (const { rel, disk } of fileList) {
+        fileMap[rel] = await Bun.file(disk).bytes();
+    }
+    const data = zipSync(fileMap);
+    return { name: `${folderName}.zip`, data };
 }

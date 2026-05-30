@@ -33,6 +33,10 @@ export const updateFileModified = db.query<void, [string]>(
     "UPDATE files SET modified_at = datetime('now') WHERE path = ?"
 );
 
+export const updateFileSize = db.query<void, [number, string | null, number, string]>(
+    "UPDATE files SET size_bytes = ?, mime_type = ? WHERE drive_id = ? AND path = ?"
+);
+
 export const deleteFile = db.query<File, [number]>(
     "DELETE FROM files WHERE id = ? RETURNING *"
 );

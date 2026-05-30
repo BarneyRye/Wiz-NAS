@@ -1,12 +1,23 @@
 import type { Drive } from '@packages/types'
 import { getDrives, insertDrive, updateDriveUsage, deleteDrive } from '@db/queries'
-import { scanDriveBytes, scanDriveFiles } from './libs/scan';
+import { scanDriveBytes, scanDriveFiles, rescanAllDrivesFn } from './libs/scan';
 import { deleteFileFn } from './libs/files';
+import { createUserFn } from './libs/auth';
 import { getFilesByPath } from '@db/queries';
+import { authRoutes } from './routes/auth';
+import { docsRoutes } from './routes/docs';
+import { driveRoutes } from './routes/drives';
+import { getUserByUsernameFn, deleteUserFn } from './libs/user';
+import { fileRoutes } from './routes/files';
+import { userRoutes } from './routes/user';
+import { scanRoutes } from './routes/scan';
 
 const TRASH_RETENTION_MS = (Number(process.env.TRASH_RETENTION_DAYS) || 30) * 24 * 60 * 60 * 1000;
+const SCAN_INTERVAL_MS = (Number(process.env.SCAN_INTERVAL_MINUTES) || 60) * 60 * 1000;
+const ADMIN_PASS = String(process.env.ADMIN_PASSWORD);
 
 const drives = await constructDrives();
+const admin = setupAdmin();
 
 async function constructDrives(): Promise<Drive[]> {
     const numDrives = Number(process.env.NUM_DRIVES);
@@ -16,9 +27,9 @@ async function constructDrives(): Promise<Drive[]> {
     const drives: Drive[] = [];
     const configuredPaths = new Set<string>();
 
-    for (let i = 0; i < numDrives; i++) {
-        const driveName = `DRIVE:${i}:NAME`;
-        const drivePath = `DRIVE:${i}:PATH`;
+    for (let i = 1; i <= numDrives; i++) {
+        const driveName = `DRIVE_${i}_NAME`;
+        const drivePath = `DRIVE_${i}_PATH`;
         const name = process.env[driveName];
         const path = process.env[drivePath];
         if (!name || !path) throw new Error(`Drive ${i} configuration incomplete in .env`);
@@ -44,6 +55,32 @@ async function constructDrives(): Promise<Drive[]> {
     return drives;
 }
 
+function setupAdmin() {
+    const adminCheck = getUserByUsernameFn('admin');
+    if (!adminCheck) {
+        const admin = createUserFn('admin',ADMIN_PASS, 'admin')
+        return admin;
+    }
+    return adminCheck; 
+}
+
+const PORT = Number(process.env.PORT) || 3000;
+
+Bun.serve({
+    port: PORT,
+    routes: {
+        ...authRoutes,
+        ...docsRoutes,
+        ...driveRoutes,
+        ...fileRoutes,
+        ...userRoutes,
+        ...scanRoutes,
+    },
+    fetch() {
+        return new Response('Not found', { status: 404 });
+    },
+});
+
 const trashCleanup = setInterval(async () => {
     const cutoff = Date.now() - TRASH_RETENTION_MS;
     for (const drive of drives) {
@@ -57,3 +94,9 @@ const trashCleanup = setInterval(async () => {
         }
     }
 }, 60000);
+
+const driveScan = setInterval(async () => {
+    try {
+        await rescanAllDrivesFn();
+    } catch {}
+}, SCAN_INTERVAL_MS);
