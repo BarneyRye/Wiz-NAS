@@ -679,6 +679,16 @@
                               }
                             ]
                           },
+                          "size_bytes": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
                           "is_folder": {
                             "type": "boolean"
                           }
@@ -689,6 +699,7 @@
                           "name",
                           "path",
                           "mime_type",
+                          "size_bytes",
                           "is_folder"
                         ],
                         "additionalProperties": false
