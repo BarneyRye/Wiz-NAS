@@ -72,3 +72,7 @@ export const moveFile = db.query<File, [number, string, string, number]>(
 export const getFilesByPath = db.query<File, [number, string]>(
     "SELECT * FROM files WHERE drive_id = ? AND path LIKE ? || '%'"
 );
+
+export const getFileByPath = db.query<File, [number, string]>(
+    "SELECT * FROM files WHERE drive_id = ? AND path = ?"
+);

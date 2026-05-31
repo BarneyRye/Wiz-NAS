@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { dirname, resolve, sep, join } from 'node:path'
 import { zipSync } from 'fflate'
 import type { Item, File } from '@packages/types'
-import { getFilesByPath, getFileById, getDriveById, upsertFile, deleteFile, deleteFileByPath, deleteFilesUnderPath, trashFolder, moveFolder, renameFile, moveFile} from '@db/queries'
+import { getFilesByPath, getFileByPath, getFileById, getDriveById, upsertFile, deleteFile, deleteFileByPath, deleteFilesUnderPath, trashFolder, moveFolder, renameFile, moveFile} from '@db/queries'
 import { FileExistsError, NotFoundError, ValidationError } from './errors'
 import { refreshDriveBytesFn } from './scan'
 
@@ -48,9 +48,13 @@ export async function insertFileFn(file: File, buffer: Buffer, overwrite: boolea
     await refreshDriveBytesFn(file.drive_id);
 }
 
-export function getPathItems(drive_id: number, path: string): Item[] {
+export function getPathItems(drive_id: number, path: string): File | Item[] {
     if (!drive_id) throw new Error('Drive ID needed to retrieve items by path');
     const folder = path.replace(/^\/+|\/+$/g, '');
+    if (folder) {
+        const exact = getFileByPath.get(drive_id, folder);
+        if (exact) return exact;
+    }
     const prefix = folder ? `${folder}/` : '';
     const files = getFilesByPath.all(drive_id, prefix);
     const items: Item[] = [];
@@ -64,7 +68,7 @@ export function getPathItems(drive_id: number, path: string): Item[] {
         const itemPath = isFolder ? `${prefix}${name}` : file.path;
         if (seen.has(itemPath)) continue;
         seen.add(itemPath);
-        items.push({ drive_id: file.drive_id, name, path: itemPath, is_folder: isFolder });
+        items.push({ id: isFolder ? null : file.id, drive_id: file.drive_id, name, path: itemPath, mime_type: isFolder ? 'folder' : file.mime_type, size_bytes: isFolder ? null : file.size_bytes, is_folder: isFolder });
     }
     return items;
 }

@@ -7,8 +7,8 @@
   "main": "dist/server.js",
   "module": "src/server.ts",
   "scripts": {
-    "dev": "bun --hot --env-file=../.env src/server.ts",
-    "build": "tsc",
+    "dev": "bun --env-file=../.env run src/generate-openapi.ts && bun --hot --env-file=../.env src/server.ts",
+    "build": "bun --env-file=../.env run src/generate-openapi.ts && tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",

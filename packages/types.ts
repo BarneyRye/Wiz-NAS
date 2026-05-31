@@ -18,9 +18,12 @@ export type File = {
 };
 
 export type Item = {
+    id: number | null;
     drive_id: number;
     name: string;
     path: string;
+    mime_type: string | null;
+    size_bytes: number | null;
     is_folder: boolean;
 };
 
