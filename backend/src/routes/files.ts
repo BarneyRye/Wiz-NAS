@@ -18,9 +18,11 @@ const fileResponse = z.object({
 });
 
 const itemResponse = z.object({
+    id: z.number().nullable(),
     drive_id: z.number(),
     name: z.string(),
     path: z.string(),
+    mime_type: z.string().nullable(),
     is_folder: z.boolean()
 });
 
@@ -181,7 +183,7 @@ function moveFolder(req: Request): Promise<Response> {
     });
 }
 
-documentRoute({ method: 'get', path: '/api/files', summary: 'List items under a path', secured: true, query: listQuery, response: z.array(itemResponse) });
+documentRoute({ method: 'get', path: '/api/files', summary: 'List items under a path, or the full file record if the path is a file', secured: true, query: listQuery, response: z.union([fileResponse, z.array(itemResponse)]) });
 documentRoute({ method: 'get', path: '/api/file/{id}', summary: 'Get file by id', secured: true, params: fileParams, response: fileResponse });
 documentRoute({ method: 'get', path: '/api/file/{id}/download', summary: 'Download a file', secured: true, params: fileParams });
 documentRoute({ method: 'post', path: '/api/file', summary: 'Upload a file (multipart/form-data)', secured: true, response: successResponse, status: 201 });
