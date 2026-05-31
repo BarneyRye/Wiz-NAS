@@ -23,6 +23,7 @@ const itemResponse = z.object({
     name: z.string(),
     path: z.string(),
     mime_type: z.string().nullable(),
+    size_bytes: z.number().nullable(),
     is_folder: z.boolean()
 });
 

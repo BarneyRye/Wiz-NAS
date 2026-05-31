@@ -68,7 +68,7 @@ export function getPathItems(drive_id: number, path: string): File | Item[] {
         const itemPath = isFolder ? `${prefix}${name}` : file.path;
         if (seen.has(itemPath)) continue;
         seen.add(itemPath);
-        items.push({ id: isFolder ? null : file.id, drive_id: file.drive_id, name, path: itemPath, mime_type: isFolder ? 'folder' : file.mime_type, is_folder: isFolder });
+        items.push({ id: isFolder ? null : file.id, drive_id: file.drive_id, name, path: itemPath, mime_type: isFolder ? 'folder' : file.mime_type, size_bytes: isFolder ? null : file.size_bytes, is_folder: isFolder });
     }
     return items;
 }
